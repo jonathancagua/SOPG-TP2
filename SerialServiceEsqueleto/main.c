@@ -13,10 +13,10 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include "SerialManager.h"
-
+#include <signal.h>
 // Definiciones para puerto serial
 #define UART_BAUDRATE	115200
-#define UART_PORT			 2
+#define UART_PORT		0	 
 void bloquearSign(void);
 void desbloquearSign(void);
 
