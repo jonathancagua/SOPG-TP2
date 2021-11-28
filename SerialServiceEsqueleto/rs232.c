@@ -35,8 +35,8 @@
 
 
 
-#ifdef __linux__   /* Linux */
-
+//#ifdef __linux__ || __unix__  /* Linux */
+#if defined(__linux__) || defined(__APPLE__)
 
 static int Cport[22],
     error;
@@ -98,6 +98,7 @@ int OpenComport(int comport_number, int baudrate)
                    break;
     case  230400 : baudr = B230400;
                    break;
+#if defined(__linux__)
     case  460800 : baudr = B460800;
                    break;
     case  500000 : baudr = B500000;
@@ -108,6 +109,7 @@ int OpenComport(int comport_number, int baudrate)
                    break;
     case 1000000 : baudr = B1000000;
                    break;
+#endif
     default      : printf("invalid baudrate\n");
                    return(1);
                    break;
