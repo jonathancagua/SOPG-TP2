@@ -43,8 +43,8 @@ static int Cport[22],
 
 static struct termios new_port_settings,
        old_port_settings[22];
-
-static char comports[22][13]={"/dev/ttyUSB0","/dev/ttyUSB1","/dev/ttyUSB2","/dev/ttyUSB3","/dev/ttyUSB4","/dev/ttyUSB5",
+//static char comports[22][13]={"/dev/ttyUSB0","/dev/ttyUSB1","/dev/ttyUSB2","/dev/ttyUSB3","/dev/ttyUSB4","/dev/ttyUSB5",
+static char comports[22][26]={"/dev/cu.usbmodemPQA1AQGQ2","/dev/ttyUSB1","/dev/ttyUSB2","/dev/ttyUSB3","/dev/ttyUSB4","/dev/ttyUSB5",
                        "/dev/ttyUSB6","/dev/ttyUSB7","/dev/ttyUSB8","/dev/ttyUSB9","/dev/ttyUSB10","/dev/ttyUSB11",
                        "/dev/ttyUSB12","/dev/ttyUSB13","/dev/ttyUSB14","/dev/ttyUSB15","/dev/ttyUSB16",
                        "/dev/ttyUSB17","/dev/ttyUSB18","/dev/ttyUSB19","/dev/ttyUSB20","/dev/ttyUSB21"};
