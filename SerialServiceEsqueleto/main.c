@@ -21,12 +21,14 @@
 #include <sys/socket.h>
 #include <sys/types.h>
 #include <unistd.h>
+#include <pthread.h>
 // Definiciones para puerto serial
 #define UART_BAUDRATE	115200
 #define UART_PORT		0	 
 void bloquearSign(void);
 void desbloquearSign(void);
-
+void *thread_task_tcp(void *message);
+pthread_t thread_service_tcp;
 int main(void)
 {
 	socklen_t addr_len;
@@ -83,7 +85,11 @@ int main(void)
 		}
 		printf("Bloqueo signal\n");
 		bloquearSign();
-
+		if (pthread_create(&thread_service_tcp, NULL, thread_task_tcp, &newfd) != 0)
+		{
+			perror("pthread_create(&tcp_service_thread) error");
+			break;
+		}
 		printf("Desbloqueo signal\n");
 		desbloquearSign();
 	}
@@ -91,6 +97,23 @@ int main(void)
 	return 0;
 }
 
+void *thread_task_tcp(void *message){
+	int fd = *((int *)message);
+	char buffer[200];
+	int size_packet;
+	while (1)
+	{
+		size_packet = read(fd, buffer, 200);
+		if (size_packet > 0)
+		{
+			printf(".");
+			fflush(NULL);
+			serial_send(buffer, size_packet);
+		}
+		else break;
+	}
+	return NULL;
+}
 void bloquearSign(void)
 {
     sigset_t set;
