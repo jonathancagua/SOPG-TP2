@@ -30,8 +30,10 @@
 void bloquearSign(void);
 void desbloquearSign(void);
 void *thread_task_tcp(void *message);
+void *thread_task_serial(void *arg);
 void sig_handler(int sig);
 pthread_t thread_service_tcp;
+pthread_t thread_service_uart;
 bool signal_close = false;
 int main(void)
 {
@@ -105,27 +107,70 @@ int main(void)
 		bloquearSign();
 		if (pthread_create(&thread_service_tcp, NULL, thread_task_tcp, &newfd) != 0)
 		{
-			perror("pthread_create(&tcp_service_thread) error");
+			perror("pthread_create(&thread_service_tcp) error");
 			break;
 		}
+		
+		if (pthread_create(&thread_service_uart, NULL, thread_task_serial, &newfd) != 0)
+		{
+			perror("pthread_create(&thread_service_tcp) error");
+			break;
+		}
+
 		printf("Desbloqueo signal\n");
 		desbloquearSign();
+
+		if (pthread_join(thread_service_tcp, NULL) < 0)
+		{
+			perror("join thread_service_tcp error");
+			break;
+		}
+
+		printf("\nCliente desconectado\n");
+
+		pthread_cancel(thread_service_uart);
+
+		if (pthread_join(thread_service_uart, NULL) < 0)
+		{
+			perror("join thread_service_uart error");
+			break;
+		}
+
+		serial_close();
+		close(fd);
 	}
 	exit(EXIT_SUCCESS);
 	return 0;
 }
 
+void *thread_task_serial(void *arg)
+{
+	int fd = *((int *)arg);
+	char buffer[200];
+	uint8_t size_packet;
+	printf("thread serial creado\n");
+	while (1)
+	{
+		size_packet = serial_receive(buffer, 200);
+		if (size_packet > 0)
+		{
+			if (write(fd, buffer, size_packet) < 0) break;
+		}
+		usleep(10000);
+	}
+
+	return (void *)0;
+}
 void *thread_task_tcp(void *message){
 	int fd = *((int *)message);
 	char buffer[200];
-	int size_packet;
+	uint8_t size_packet;
+	printf("thread tcp creado\n");
 	while (1)
 	{
 		size_packet = read(fd, buffer, 200);
 		if (size_packet > 0)
 		{
-			printf(".");
-			fflush(NULL);
 			serial_send(buffer, size_packet);
 		}
 		else break;
