@@ -12,6 +12,7 @@
  */
 #include <stdio.h>
 #include <stdlib.h>
+#include <stdbool.h>
 #include "SerialManager.h"
 #include <signal.h>
 #include <netinet/in.h>
@@ -22,13 +23,16 @@
 #include <sys/types.h>
 #include <unistd.h>
 #include <pthread.h>
+#include <errno.h>
 // Definiciones para puerto serial
 #define UART_BAUDRATE	115200
 #define UART_PORT		0	 
 void bloquearSign(void);
 void desbloquearSign(void);
 void *thread_task_tcp(void *message);
+void sig_handler(int sig);
 pthread_t thread_service_tcp;
+bool signal_close = false;
 int main(void)
 {
 	socklen_t addr_len;
@@ -36,6 +40,11 @@ int main(void)
 	struct sockaddr_in clientaddr;
 	struct sockaddr_in serveraddr;
 	char ipClient[32];
+	struct sigaction sa;
+	int main_return = EXIT_FAILURE;
+	sa.sa_handler = sig_handler;
+	sa.sa_flags = 0;
+	sigemptyset(&sa.sa_mask);
 	// Creamos socket
 	int s = socket(AF_INET,SOCK_STREAM, 0);
 
@@ -70,8 +79,17 @@ int main(void)
 		addr_len = sizeof(struct sockaddr_in);
 		if ( (newfd = accept(s, (struct sockaddr *)&clientaddr,&addr_len)) == -1)
 		{
-			perror("error en accept");
-			exit(1);
+			if (errno == EINTR && signal_close == true)
+			{
+				main_return = EXIT_SUCCESS;
+				exit(EXIT_SUCCESS);
+			}
+			else
+			{
+				perror("accept() error");
+				exit(EXIT_FAILURE);
+			}
+			
 		}
 	 	inet_ntop(AF_INET, &(clientaddr.sin_addr), ipClient, sizeof(ipClient));
 		printf("server:  conexion desde:  %s\n",ipClient);
@@ -132,4 +150,13 @@ void desbloquearSign(void)
     sigaddset(&set, SIGINT);
     sigaddset(&set, SIGTERM);
     pthread_sigmask(SIG_UNBLOCK, &set, NULL);
+}
+
+void sig_handler(int sig)
+{
+	if (sig == SIGINT || sig == SIGTERM)
+	{
+		pthread_cancel(thread_service_tcp);
+		signal_close = true;
+	}
 }
