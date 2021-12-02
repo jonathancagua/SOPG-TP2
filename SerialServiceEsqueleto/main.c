@@ -137,7 +137,7 @@ int main(void)
 		}
 
 		serial_close();
-		close(fd);
+		close(newfd);
 	}
 	exit(EXIT_SUCCESS);
 	return 0;
