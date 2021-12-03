@@ -147,6 +147,7 @@ void *thread_task_serial(void *arg)
 {
 	int fd = *((int *)arg);
 	char buffer[200];
+	char outsStates[20];
 	uint8_t size_packet;
 	printf("thread serial creado\n");
 	while (1)
@@ -154,7 +155,17 @@ void *thread_task_serial(void *arg)
 		size_packet = serial_receive(buffer, 200);
 		if (size_packet > 0)
 		{
-			if (write(fd, buffer, size_packet) < 0) break;
+			if(bufferRx[0]=='>' && bufferRx[1]=='T' && bufferRx[2]=='O' && bufferRx[3]=='G' && bufferRx[4]=='G' && bufferRx[5]=='L' && bufferRx[6]=='E'  && bufferRx[7]==' '  
+			&& bufferRx[8]=='S'  && bufferRx[9]=='T'  && bufferRx[10]=='A'  && bufferRx[11]=='T'  && bufferRx[12]=='E' && bufferRx[13]==':')
+			{
+				// 6 8 10 12
+				sprintf(outsStates, "%s", ":LINE");
+				outsStates[5] = bufferRx[14];
+				outsStates[6] ='T';
+				outsStates[7] ='G';
+				outsStates[8] ='\n';
+			}
+			//if (write(fd, buffer, size_packet) < 0) break;
 		}
 		usleep(10000);
 	}
@@ -164,16 +175,35 @@ void *thread_task_serial(void *arg)
 void *thread_task_tcp(void *message){
 	int fd = *((int *)message);
 	char buffer[200];
+	char outsStates[20];
 	uint8_t size_packet;
 	printf("thread tcp creado\n");
 	while (1)
 	{
 		size_packet = read(fd, buffer, 200);
-		if (size_packet > 0)
+		//if (size_packet > 0)
+		//{
+		//	serial_send(buffer, size_packet);
+		//}
+		//else break;
+		if(size_packet>=13)
 		{
-			serial_send(buffer, size_packet);
+			if(bufferRx[0]==':' && bufferRx[1]=='S' && bufferRx[2]=='T' && bufferRx[3]=='A' && bufferRx[4]=='T' && bufferRx[5]=='E' && bufferRx[6]=='S')
+			{
+				// 6 8 10 12
+				printf("Enviado de tcp\n");
+            	sprintf(outsStates, "%s", ">OUTS:");
+            	outsStates[6] = bufferRx[7];
+            	outsStates[7] = ',';
+            	outsStates[8] = bufferRx[8];
+            	outsStates[9] = ',';
+            	outsStates[10] = bufferRx[9];
+            	outsStates[11] = ',';
+            	outsStates[12] = bufferRx[10];
+            	outsStates[13] ='\n';
+				serial_send(outsStates, 14);
+			}
 		}
-		else break;
 	}
 	return NULL;
 }
