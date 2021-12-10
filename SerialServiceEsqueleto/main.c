@@ -49,7 +49,11 @@ int main(void)
 	sigemptyset(&sa.sa_mask);
 	// Creamos socket
 	int s = socket(AF_INET,SOCK_STREAM, 0);
-
+	if (s < 0)
+	{
+		perror("socket() error");
+		exit(EXIT_FAILURE);
+	}
 	// Cargamos datos de IP:PORT del server
 	bzero((char*) &serveraddr, sizeof(serveraddr));
 	serveraddr.sin_family = AF_INET;
@@ -59,13 +63,13 @@ int main(void)
 	if(inet_pton(AF_INET, "127.0.0.1", &(serveraddr.sin_addr))<=0)
 	{
 		fprintf(stderr,"ERROR invalid server IP\r\n");
-		return 1;
+		exit(EXIT_FAILURE);
 	}
 		// Abrimos puerto con bind()
 	if (bind(s, (struct sockaddr*)&serveraddr, sizeof(serveraddr)) == -1) {
 		close(s);
 		perror("listener: bind");
-		return 1;
+		exit(EXIT_FAILURE);
 	}
 
 	// Seteamos socket en modo Listening
@@ -73,7 +77,7 @@ int main(void)
   	{
 		close(s);
 		perror("error en listen");
-		exit(1);
+		exit(EXIT_FAILURE);
   	}
 
 	while(1){
@@ -84,13 +88,12 @@ int main(void)
 			if (errno == EINTR && signal_close == true)
 			{
 				main_return = EXIT_SUCCESS;
-				exit(EXIT_SUCCESS);
 			}
 			else
 			{
 				perror("accept() error");
-				exit(EXIT_FAILURE);
 			}
+			break;
 			
 		}
 	 	inet_ntop(AF_INET, &(clientaddr.sin_addr), ipClient, sizeof(ipClient));
@@ -98,7 +101,7 @@ int main(void)
 
 		printf("main: Conectando Kit de NXP \n");
 		printf("main: Se intenta abrir puerto serial \n");
-		if (serial_open(UART_PORT, UART_BAUDRATE) != 0)
+		if (serial_open(UART_PORT, 115200) != 0)
 		{
 			perror("main: error abriendo serial_open()");
 			break;
@@ -136,24 +139,32 @@ int main(void)
 			break;
 		}
 
-		serial_close();
 		close(newfd);
+		if (signal_close == true)
+		{
+			main_return = EXIT_SUCCESS;
+			break;
+		}
 	}
-	exit(EXIT_SUCCESS);
-	return 0;
+	printf("SE CIERRRA EL SOCKET\n");
+	close(s);
+	close(newfd);
+	serial_close();
+	return main_return;
 }
 
 void *thread_task_serial(void *arg)
 {
 	int fd = *((int *)arg);
-	char buffer[200];
+	char bufferRx[200];
 	char outsStates[20];
 	uint8_t size_packet;
 	printf("thread serial creado\n");
 	while (1)
 	{
-		size_packet = serial_receive(buffer, 200);
-		if (size_packet > 0)
+		size_packet = serial_receive(bufferRx, 200);
+		if (size_packet > 0)printf("RX: serial %d %s \n",size_packet,bufferRx);
+		if (size_packet > 13)
 		{
 			if(bufferRx[0]=='>' && bufferRx[1]=='T' && bufferRx[2]=='O' && bufferRx[3]=='G' && bufferRx[4]=='G' && bufferRx[5]=='L' && bufferRx[6]=='E'  && bufferRx[7]==' '  
 			&& bufferRx[8]=='S'  && bufferRx[9]=='T'  && bufferRx[10]=='A'  && bufferRx[11]=='T'  && bufferRx[12]=='E' && bufferRx[13]==':')
@@ -164,29 +175,29 @@ void *thread_task_serial(void *arg)
 				outsStates[6] ='T';
 				outsStates[7] ='G';
 				outsStates[8] ='\n';
+				if (write(fd, outsStates, 9) < 0) break;
 			}
-			//if (write(fd, buffer, size_packet) < 0) break;
 		}
-		usleep(10000);
+		usleep(1000);
 	}
 
 	return (void *)0;
 }
 void *thread_task_tcp(void *message){
 	int fd = *((int *)message);
-	char buffer[200];
+	char bufferRx[200];
 	char outsStates[20];
 	uint8_t size_packet;
 	printf("thread tcp creado\n");
 	while (1)
 	{
-		size_packet = read(fd, buffer, 200);
-		//if (size_packet > 0)
-		//{
-		//	serial_send(buffer, size_packet);
-		//}
-		//else break;
-		if(size_packet>=13)
+		size_packet = read(fd, bufferRx, 200);
+		if (size_packet > 0)printf("RX: tcp %d %s \n",size_packet,bufferRx);
+		else{
+			break;
+		}
+
+		if(size_packet>=12)
 		{
 			if(bufferRx[0]==':' && bufferRx[1]=='S' && bufferRx[2]=='T' && bufferRx[3]=='A' && bufferRx[4]=='T' && bufferRx[5]=='E' && bufferRx[6]=='S')
 			{
